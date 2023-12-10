@@ -1,6 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
-
-
 def find_pathes(field, number, last_x, last_y, pathes):
     if number is None:
         is_correct = True
@@ -17,12 +14,6 @@ def find_pathes(field, number, last_x, last_y, pathes):
 
         new_field = [[el for el in row] for row in field]
 
-        fields = []
-        numbers = []
-        xs = []
-        ys = []
-        all_pathes = []
-
         for (x, y) in get_neighbours(last_x, last_y):
             if 0 <= x < len(field) and 0 <= y < len(field[0]):
                 if (x, y) not in new_pathes[number]:
@@ -31,19 +22,12 @@ def find_pathes(field, number, last_x, last_y, pathes):
                             new_field[x][y] = 0
                         new_pathes[number].append((x, y))
                         number_, (new_x, new_y) = find_min_relations(field, new_pathes)
-                        fields.append(new_field)
-                        numbers.append(number_)
-                        xs.append(new_x)
-                        ys.append(new_y)
-                        all_pathes.append(new_pathes)
-                        # args.append((new_field, number_ , new_x, new_y, new_pathes))
+                        for path in find_pathes(new_field, number_, new_x, new_y, new_pathes):
+                            yield path
                         new_field = [[el for el in row] for row in field]
                         for num in pathes:
                             new_pathes[num] = [(x_, y_) for (x_, y_) in pathes[num]]
-        results = list(executor.map(find_pathes, fields, numbers, xs, ys, all_pathes))
-        print(list(el) for el in [list(el1) for el1 in results])
-        for result in results:
-            yield result
+        yield None
 
 
 def find_min_relations(field, pathes):
@@ -91,13 +75,10 @@ for i in range(len(field)):
         if field[i][j] is not None and field[i][j] not in pathes.keys():
             pathes[field[i][j]] = [(i, j)]
 
-executor = ThreadPoolExecutor(max_workers=len(field))
-
 number, (x, y) = find_min_relations(field, pathes)
 variants = find_pathes(field, number, x, y, pathes)
 
 for variant in variants:
-    print(variant)
     if variant is not None:
         field_copy = [[el for el in row] for row in field]
         for number in variant:
@@ -129,3 +110,4 @@ for variant in variants:
             for el in row:
                 print(el, end=' ')
             print()
+        print()
