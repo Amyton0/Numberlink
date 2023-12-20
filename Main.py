@@ -2,6 +2,10 @@ import colorama
 
 
 def find_pathes(field, number, last_x, last_y, pathes):
+    if length is not None:
+        for path in pathes:
+            if len(pathes[path]) - 2 > length:
+                return None
     if number is None:
         is_correct = True
         for num in pathes:
@@ -9,8 +13,6 @@ def find_pathes(field, number, last_x, last_y, pathes):
             if field[x][y] != num:
                 is_correct = False
         if is_correct:
-            if pathes is not None:
-                print(pathes)
             yield pathes
     else:
         new_pathes = {}
@@ -90,35 +92,64 @@ while not is_exit:
     lines = None
     columns = None
 
-    while lines is None or columns is None:
-        try:
-            lines, columns = map(int,
-                                 input('Введите размеры поля через пробел: сначала количество строк, потом — столбцов: ')
-                                 .split())
-        except Exception:
-            print(colorama.Fore.RED + "Неверно введён размер поля")
+    mode = None
 
-    field = []
-    numbers_of_numbers = {}
-    are_numbers_correct = False
-    while not are_numbers_correct:
-        field = enter_field(lines, columns)
+    while mode != 'file' and mode != '':
+        mode = input('Введите "file", чтобы ввести головоломку из файла, введите Enter, '
+                     'чтобы ввести головоломку самостоятельно: ')
 
-        are_numbers_correct = True
+    if mode == 'file':
+        field_from_file = None
+        while field_from_file is None:
+            filename = input('Введите название файла: ')
+            try:
+                with open(filename, "r") as f:
+                    field_from_file = f.readlines()
+            except Exception:
+                print(colorama.Fore.RED + "Такого файла не существует")
+
+        field = []
+        for line in field_from_file:
+            field.append([None if el == '0' else int(el) for el in line.split()])
+        lines = len(field)
+        columns = len(field[0])
+    else:
+        while lines is None or columns is None:
+            try:
+                lines, columns = map(int,
+                                     input('Введите размеры поля через пробел: сначала количество строк, потом — столбцов: ')
+                                     .split())
+            except Exception:
+                print(colorama.Fore.RED + "Неверно введён размер поля")
+
+        field = []
         numbers_of_numbers = {}
+        are_numbers_correct = False
+        while not are_numbers_correct:
+            field = enter_field(lines, columns)
 
-        for i in range(lines):
-            for j in range(columns):
-                if field[i][j] is not None and field[i][j] not in numbers_of_numbers.keys():
-                    numbers_of_numbers[field[i][j]] = 1
-                elif field[i][j] is not None:
-                    numbers_of_numbers[field[i][j]] += 1
+            are_numbers_correct = True
+            numbers_of_numbers = {}
 
-        for number_ in numbers_of_numbers:
-            if numbers_of_numbers[number_] != 2:
-                are_numbers_correct = False
-        if not are_numbers_correct:
-            print(colorama.Fore.RED + "Не каждого числа на поле по 2")
+            for i in range(lines):
+                for j in range(columns):
+                    if field[i][j] is not None and field[i][j] not in numbers_of_numbers.keys():
+                        numbers_of_numbers[field[i][j]] = 1
+                    elif field[i][j] is not None:
+                        numbers_of_numbers[field[i][j]] += 1
+
+            for number_ in numbers_of_numbers:
+                if numbers_of_numbers[number_] != 2:
+                    are_numbers_correct = False
+            if not are_numbers_correct:
+                print(colorama.Fore.RED + "Не каждого числа на поле по 2")
+    length = None
+
+    while length is None or length < 0 and length != -1:
+        length = int(input("Введите ограничение (положительное) на длину связи. Если его нет — введите -1. "))
+
+    if length == -1:
+        length = None
 
     pathes = {}
     for i in range(lines):
@@ -129,43 +160,50 @@ while not is_exit:
     number, (x, y) = find_min_relations(field, pathes)
     variants = find_pathes(field, number, x, y, pathes)
 
-    if variants is None:
-        print(colorama.Fore.RED + 'Решений не найдено')
-    else:
-        for variant in variants:
-            if variant is not None:
-                field_copy = [[el for el in row] for row in field]
-                for number in variant:
-                    for j in range(1, len(variant[number]) - 1):
-                        previous_x = variant[number][j - 1][0]
-                        previous_y = variant[number][j - 1][1]
-                        x = variant[number][j][0]
-                        y = variant[number][j][1]
-                        next_x = variant[number][j + 1][0]
-                        next_y = variant[number][j + 1][1]
-                        if abs(next_x - previous_x) == 2:
-                            field_copy[x][y] = vertical
-                        if abs(next_y - previous_y) == 2:
-                            field_copy[x][y] = horizontal
-                        if y > previous_y and x < next_x or x < previous_x and y > next_y:
-                            field_copy[x][y] = from_down_to_left_turning
-                        if y < previous_y and x < next_x or x < previous_x and y < next_y:
-                            field_copy[x][y] = from_down_to_right_turning
-                        if y < previous_y and x > next_x or x > previous_x and y < next_y:
-                            field_copy[x][y] = from_up_to_left_turning
-                        if y > previous_y and x > next_x or x > previous_x and y > next_y:
-                            field_copy[x][y] = from_up_to_right_turning
-                for i in range(len(field_copy)):
-                    for j in range(len(field_copy[i])):
-                        if field_copy[i][j] is None:
-                            field_copy[i][j] = ' '
+    is_solution = False
 
-                for row in field_copy:
-                    for el in row:
-                        print(el, end=' ')
-                    print()
+    for variant in variants:
+        if variant is not None:
+            is_solution = True
+            field_copy = [[el for el in row] for row in field]
+            for number in variant:
+                for j in range(1, len(variant[number]) - 1):
+                    previous_x = variant[number][j - 1][0]
+                    previous_y = variant[number][j - 1][1]
+                    x = variant[number][j][0]
+                    y = variant[number][j][1]
+                    next_x = variant[number][j + 1][0]
+                    next_y = variant[number][j + 1][1]
+                    if abs(next_x - previous_x) == 2:
+                        field_copy[x][y] = vertical
+                    if abs(next_y - previous_y) == 2:
+                        field_copy[x][y] = horizontal
+                    if y > previous_y and x < next_x or x < previous_x and y > next_y:
+                        field_copy[x][y] = from_down_to_left_turning
+                    if y < previous_y and x < next_x or x < previous_x and y < next_y:
+                        field_copy[x][y] = from_down_to_right_turning
+                    if y < previous_y and x > next_x or x > previous_x and y < next_y:
+                        field_copy[x][y] = from_up_to_left_turning
+                    if y > previous_y and x > next_x or x > previous_x and y > next_y:
+                        field_copy[x][y] = from_up_to_right_turning
+            for i in range(len(field_copy)):
+                for j in range(len(field_copy[i])):
+                    if field_copy[i][j] is None:
+                        field_copy[i][j] = ' '
+
+            for row in field_copy:
+                for el in row:
+                    print(el, end=' ')
                 print()
-    is_ex = input('Чтобы выйти, введите exit, чтобы начать заново, введите что-нибудь другое')
+            print()
 
-    if is_ex == 'exit':
+    if not is_solution:
+        print("Решений не найдено")
+
+    exit_code = None
+
+    while exit_code != 'exit' and exit_code != '':
+        exit_code = input('Чтобы выйти, введите "exit", чтобы начать заново, нажмите Enter')
+
+    if exit_code == 'exit':
         is_exit = True
